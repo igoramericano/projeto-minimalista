@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Respire | Meditação Guiada</title>
+
+    <style>
+        /* Configurações básicas e cores do projeto */
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #0f3460;
+            --accent-color: #e94560;
+            --text-color: #f0f0f0;
+            --light-text-color: #b1b1b1;
+            --font-stack: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        /* Reset básico e layout da página */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-stack);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 500px;
+            background-color: var(--primary-color);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Estilo da tipografia */
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--light-text-color);
+            margin-bottom: 40px;
+        }
+
+        /* Estilo do Guia de Respiração */
+        .breathing-guide {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 350px;
+        }
+
+        .circle {
+            width: 200px;
+            height: 200px;
+            background-color: var(--accent-color);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+            transition: transform 0.5s ease-in-out;
+            margin-bottom: 20px;
+        }
+
+        .breathing-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-height: 30px;
+        }
+
+        /* Efeito de animação (inicia com escala 1 e vai até 1.2) */
+        .circle.animate {
+            animation: breathe 17s infinite linear;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            23.5% { transform: scale(1.2); }
+            64.5% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Estilo dos controles e do timer */
+        .controls-container {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        button {
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            border: none;
+            padding: 15px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+        
+        button:hover {
+            background-color: #d13a52;
+        }
+
+        #resetButton, #musicButton {
+            background-color: var(--light-text-color);
+        }
+        
+        #resetButton:hover, #musicButton:hover {
+            background-color: #9a9a9a;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+            font-size: 1rem;
+            color: var(--light-text-color);
+        }
+    </style>
+
+    <div class="app-container">
+        <h1>Respire Fundo</h1>
+        <p class="subtitle">Encontre a calma através de sessões de respiração guiada.</p>
+
+        <div class="breathing-guide">
+            <div class="circle"></div>
+            <p class="breathing-text">Inspire</p>
+        </div>
+
+        <div class="controls-container">
+            <div class="timer-display">05:00</div>
+            <button id="startButton">Começar</button>
+            <button id="resetButton">Reiniciar</button>
+            <button id="musicButton">Tocar Música</button>
+        </div>
+
+        <div class="progress-container">
+            <p>Sessões Concluídas: <span id="sessionsCompleted">0</span></p>
+        </div>
+    </div>
+
+    <audio id="background-music" src="https://assets.mixkit.co/music/download/mp3/mixkit-serene-view-1002.mp3" loop></audio>
+
+    <script>
+        // Seleção dos elementos do DOM
+        const startButton = document.getElementById('startButton');
+        const resetButton = document.getElementById('resetButton');
+        const musicButton = document.getElementById('musicButton');
+        const timerDisplay = document.querySelector('.timer-display');
+        const breathingText = document.querySelector('.breathing-text');
+        const circle = document.querySelector('.circle');
+        const sessionsCompletedSpan = document.getElementById('sessionsCompleted');
+        const backgroundMusic = document.getElementById('background-music');
+
+        // Variáveis de estado
+        let totalSeconds = 60 * 5; // Duração da sessão em segundos (ex: 5 minutos)
+        const cycleDuration = 17;
+        let intervalId;
+        let isCounting = false;
+        let isMusicPlaying = false;
+
+        // Lógica do temporizador
+        async function startTimer() {
+            if (isCounting) {
+                // Se já estiver contando, pausa o timer
+                clearInterval(intervalId);
+                startButton.textContent = 'Continuar';
+                circle.classList.remove('animate');
+                isCounting = false;
+                
+                // Pausa a música ao pausar o timer
+                if (isMusicPlaying) {
+                    backgroundMusic.pause();
+                }
+                
+            } else {
+                // Se não estiver contando, começa o timer
+                isCounting = true;
+                startButton.textContent = 'Pausar';
+                circle.classList.add('animate');
+                
+                // Tenta tocar a música (redundância de segurança)
+                if (!isMusicPlaying) {
+                    try {
+                        await backgroundMusic.play();
+                        isMusicPlaying = true;
+                        musicButton.textContent = 'Pausar Música';
+                    } catch (error) {
+                        console.error("Erro ao tentar reproduzir áudio:", error);
+                    }
+                }
+
+                intervalId = setInterval(() => {
+                    if (totalSeconds <= 0) {
+                        // Quando o tempo acabar
+                        clearInterval(intervalId);
+                        
+                        // Para a música ao final
+                        backgroundMusic.pause();
+                        backgroundMusic.currentTime = 0; // Volta a música para o início
+                        isMusicPlaying = false;
+                        musicButton.textContent = 'Tocar Música';
+
+                        timerDisplay.textContent = '00:00';
+                        breathingText.textContent = 'Sessão Concluída!';
+                        startButton.textContent = 'Começar';
+                        circle.classList.remove('animate');
+                        isCounting = false;
+
+                        // Incrementa o contador de sessões e salva no localStorage
+                        let sessionsCount = parseInt(localStorage.getItem('sessionsCompleted') || 0);
+                        sessionsCount++;
+                        localStorage.setItem('sessionsCompleted', sessionsCount);
+                        sessionsCompletedSpan.textContent = sessionsCount;
+
+                        return;
+                    }
+
+                    // Atualiza o temporizador
+                    totalSeconds--;
+                    const minutes = Math.floor(totalSeconds / 60);
+                    const seconds = totalSeconds % 60;
+                    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                    // Lógica para o texto de respiração
+                    const secondsInCycle = (totalSeconds % cycleDuration);
+
+                    if (secondsInCycle >= (cycleDuration - 4)) {
+                        breathingText.textContent = 'Inspire';
+                    } else if (secondsInCycle >= (cycleDuration - 4 - 7)) {
+                        breathingText.textContent = 'Segure o ar';
+                    } else {
+                        breathingText.textContent = 'Solte o ar';
+                    }
+
+                }, 1000);
+            }
+        }
+
+        async function toggleMusic() {
+            if (isMusicPlaying) {
+                backgroundMusic.pause();
+                musicButton.textContent = 'Tocar Música';
+                isMusicPlaying = false;
+            } else {
+                try {
+                    await backgroundMusic.play();
+                    musicButton.textContent = 'Pausar Música';
+                    isMusicPlaying = true;
+                } catch (error) {
+                    console.error("Erro ao tentar reproduzir áudio:", error);
+                    alert("O navegador bloqueou a reprodução automática de áudio. Por favor, clique novamente para tocar a música.");
+                }
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(intervalId);
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+            isMusicPlaying = false;
+            musicButton.textContent = 'Tocar Música';
+            totalSeconds = 60 * 5;
+            isCounting = false;
+            timerDisplay.textContent = '05:00';
+            startButton.textContent = 'Começar';
+            breathingText.textContent = 'Inspire';
+            circle.classList.remove('animate');
+        }
+
+        // Recupera o contador de sessões ao carregar a página
+        function loadSessionsCount() {
+            let sessionsCount = localStorage.getItem('sessionsCompleted') || 0;
+            sessionsCompletedSpan.textContent = sessionsCount;
+        }
+
+        // Adiciona os event listeners aos botões
+        startButton.addEventListener('click', startTimer);
+        resetButton.addEventListener('click', resetTimer);
+        musicButton.addEventListener('click', toggleMusic);
+
+        // Carrega o contador inicial
+        document.addEventListener('DOMContentLoaded', loadSessionsCount);
+    </script>
+</body>
+</html>
